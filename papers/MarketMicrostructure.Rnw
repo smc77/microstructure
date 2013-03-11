@@ -1,0 +1,1094 @@
+\documentclass[12pt]{article} % Default font size is 12pt, it can be changed here
+%\documentclass{tufte-handout}
+
+\usepackage{geometry} % Required to change the page size to A4
+\geometry{a4paper} % Set the page size to be A4 as opposed to the default US Letter
+
+%\usepackage{float} % Allows putting an [H] in \begin{figure} to specify the exact location of the figure
+\usepackage{wrapfig} % Allows in-line images such as the example fish picture
+\usepackage{amsmath} 
+
+%\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+
+%\linespread{1.2} % Line spacing
+
+%\setlength\parindent{0pt} % Uncomment to remove all indentation from paragraphs
+
+%\graphicspath{{./Pictures/}} % Specifies the directory where pictures are stored
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{Sweave}
+\usepackage{subfigure}
+%\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{caption}
+%\usepackage{float} 
+\usepackage{attrib} 
+
+\usepackage{tikz}
+\usepackage{graphicx}
+\usetikzlibrary{shapes,backgrounds}
+\usetikzlibrary{arrows,positioning}
+\usetikzlibrary{trees}
+%\usepackage{signalflowdiagram}
+\usepackage{schemabloc}
+
+\usetikzlibrary{circuits}
+
+\SweaveOpts{engine=R,eps=FALSE,echo=TRUE,prefix.string=figures/chart}
+
+\title{The Law of One Price Meets the Law of Many Prices: Market Microstructure, Transaction Costs, and Algorithmic Trading}
+
+\author{Shane Conway\\
+\small \texttt{smc77@columbia.edu}\\
+}
+
+\date{\dateline{June 10, 2012}\\
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+I provide a general overview of Market Microstructure Theory.  I start with a basic review of market
+structure and rules.  I then introduce the standard microstructure theories of price discovery: inventory models,
+sequential trade models, and strategic trade models.  I discuss the transaction cost literature, including trade
+cost optimization models.  Finally, I briefly discuss some of the issues raised by recent topics on high-frequency 
+trading and quoting.
+\end{abstract}
+
+\newpage
+
+%\begin{titlepage}
+%
+%\newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % Defines a new command for the horizontal lines, change thickness here
+%
+%\center % Center everything on the page
+%
+%\textsc{\LARGE University Name}\\[1.5cm] % Name of your university/college
+%\textsc{\Large Major Heading}\\[0.5cm] % Major heading such as course name
+%\textsc{\large Minor Heading}\\[0.5cm] % Minor heading such as course title
+%
+%\HRule \\[0.4cm]
+%{ \huge \bfseries Title}\\[0.4cm] % Title of your document
+%\HRule \\[1.5cm]
+%
+%\begin{minipage}{0.4\textwidth}
+%\begin{flushleft} \large
+%\emph{Author:}\\
+%John \textsc{Smith} % Your name
+%\end{flushleft}
+%\end{minipage}
+%~
+%\begin{minipage}{0.4\textwidth}
+%\begin{flushright} \large
+%\emph{Supervisor:} \\
+%Dr. James \textsc{Smith} % Supervisor's Name
+%\end{flushright}
+%\end{minipage}\\[4cm]
+%
+%{\large \today}\\[3cm] % Date, change the \today to a set date if you want to be precise
+%
+%%\includegraphics{Logo}\\[1cm] % Include a department/university logo - this will require the graphicx package
+%
+%\vfill % Fill the rest of the page with whitespace
+%
+%\end{titlepage}
+
+<<echo=FALSE>>=
+library(RColorBrewer)
+library(xtable)
+library(xts)
+library(RQuantLib)
+library(quantmod)
+library(PerformanceAnalytics)
+library(ggplot2)
+library(car)
+library(RJSONIO)
+library(plyr)
+library(reshape)
+
+#rm(list=ls())
+options("width"=75)  # to override Dirk's R default and so that Sweave behaves
+#options("prompt"="R> ") # cue Kleiber and Zeileis; also JSS default
+# create figures/ if not present
+if ( ! (file.exists("figures") && file.info("figures")$isdir) ) dir.create("figures")
+
+qplot.zoo <- function(x) {
+	edhec <- melt(data.frame(date=index(x), x), id="date")
+	return(qplot(date, value, data = edhec, geom = "line", group = variable, color=variable))	
+}
+@
+
+\tableofcontents
+
+\newpage
+
+\section{Introduction}
+
+The \emph{Law of One Price} is a central feature of many theories in modern finance and economics.  It states that ...  
+
+This concept ignores some common sense observations.  It seems obvious that market structure matters.  It is readily available that 
+we can go from one grocery store to another and buy the exact same products for different prices.  Why does this happen?  The simple
+answer is market inefficiency.  It is not readily known to everyone what prices are in both markets in advance.  And there are other factors
+that might contribute to one's decision.  
+
+This also ignores one of the major philosophical revolutions in the twentieth century: pluralism.  The law of one price harkens back 
+to classical platonism, and inhabits an abstract world of ideals which is only a faint connection to the real world.  In modern financial 
+markets there are always \emph{many prices}.  
+
+Markets are human institutions.  Even when governed by computer algorithms, these are still following rules designed by human rules and
+intuitions.  There is no true abstract mathematical reality in finance.  We have known this for a long time.  Most especially established 
+by Benoit Mandlebrot in ...  
+
+Tail events are the signature of humanity.    
+
+The functioning of individual asset exchange is one of the most fundamental aspects of microeconomics and finance.  Marketplace 
+exchange has been transformed over the last two decades due to the introduction of electronic exchanges along with the related
+regulations (Order Handling Rules, Reg ATS, and Reg NMS).  I aim to provide a concise literature review related to the different
+aspects of this field.  The literature might be loosely divided into Market Microstruture Theory (modeling the behavior 
+of market makers) and Optimal Execution (transaction cost analysis).  There is also a burgeoning literature on high-frequency
+trading, which is the primary source of liquidity in modern electronic markets.
+
+"As good a starting point as any is the coinage of the term \emph{market microstructure} in the paper of the same title by Garman (1976):
+
+\begin{quote}
+We depart from the usual approaches of the theory of exchange by (1) making the assumption of asynchonous, temporally discreate market 
+activities on the part of the market agents and (2) adopting a viewpoint which treats the temporal microstructure, i.e. moment-to-moment
+aggregate exchagne behavior, as an important descriptive aspect of such markets. (p.257)
+\end{quote} 
+
+
+\subsection{Overview}
+
+"Confessions of a Stock Operator" is one of the most widely read texts in financial literature.  
+
+Markets are how we are able to get what we want, when we want it.  In order to achieve this level of immediacy, a customer needs
+to be willing to pay a premium over the cost of production.    
+
+There are several key themes throughout:
+
+\begin{itemize}
+\item \emph{Equilibrium} is a state when all market participants are satisfied with the current exchange.
+\item \emph{Liquidity} denotes the idea of being about to buy or sell quickly and at a given price.
+\item \emph{Information} covers any knowledge that can impact the buy and sell decisions of market participants.  Prices are 
+ultimately decided by the exchange between individuals and firms; there is no abstract "true" price.  Some traders are "informed"
+and others are "uninformed".   
+\item \emph{Risk} is the uncertainty associated with a transaction.  
+\item \emph{Middlemen} enable the exchange between disparate places and times. 
+\item \emph{Transaction costs} cover the difference between the desired price and the realized price.    
+\item \emph{Algorithms} are specific descriptions for how a trade should take place.    
+\item \emph{Market Clearing} denotes the arrival at an equilibrium price.
+\end{itemize}
+
+Similarly, I also use some important structural divisions to help clarify ideas: 
+
+\begin{itemize}
+\item \emph{Theoretical vs. empirical} analyses: theoretical models aim to provide an    
+\item \emph{Ex-ante vs. ex-post}: ex-ante includes any analysis that is based on information available "at the time", while 
+ex-post can use future information "after the fact".    
+\end{itemize}
+
+I aim to provide a general introduction to this field so that it can be understood by the general reader.  I assume no prior 
+knowledge of the subject, although exposure to statistics, time series analysis, and optimization will be helpful.
+
+I will be using R to explore model dynamics.  However, I assume throughout that the reader is familiar with R and with 
+basic time series analysis and econometrics.  For a more thorough introduction to R, I recommend reading ...  X provides a nice 
+introduction to econometrics with R.  I also like "Mostly Harmless Econometrics" by ...
+
+For simplicity, the code is implemented in the \emph{microstructure} package on CRAN.  This can be installed in R by running:
+
+<<eval=FALSE>>=
+install.package("microstructure")
+@
+
+This imports a few packages that are generally useful for this kind of analysis.
+
+http://journal.r-project.org/archive/2011-1/RJournal_2011-1_Kane~et~al.pdf
+
+% http://pages.stern.nyu.edu/~jhasbrou/Teaching/2011%20Fall%20PhD%20Microstructure/PhDMicro2011Fall.html
+% http://waxworksmath.com/Authors/G_M/Hasbrouck/WriteUp/weatherwax_hasbrouck_notes.pdf
+
+\subsection{Value, Price, Quantity, Uncertainty, and Time}
+
+The time value of money is the central idea of finance.  This might simply be thought of in terms of interest rates.  In this sense, the
+bid-ask spread is the instantaneous interest rate that the market maker charges for temporal risk.
+
+In an abstract sense we are most concerned with the \emph{value} of an asset, although the simplest proxy for value is \emph{price} and
+I will consider concepts to be interchangable.  Price is generally easier to process.
+
+The interaction between the price and time lies at the heart of market microstructure and transaction costs.  In one of 
+the foundational works, Demsetz (1968)...  "Demsetz argued that this lack of equilibrium could be overcome by paying a 
+price for immediacy." (O'Hara 5) 
+
+Another important aspect of exchange is quantity: namely, at different prices, individuals would be will to exchange varying amounts 
+of things.
+
+\subsubsection{Stochastic Processes}
+
+The random walk (or brownian motion) is the most basic model for price dynamics, first proposed by Bachelier (1895).  This is generally one of the first things
+being considered in \emph{stochastic processes}.  
+
+The basic basic model can be defined as a sequential addition of the prior value plus a random variable $\epsilon$ (typically gaussian).  
+
+\begin{equation}
+p_t = p_{t - 1} + \epsilon
+\end{equation}
+
+It is simple to test these models in R with the following command:
+
+<<>>=
+time = 1:100
+epsilon = rnorm(time)
+prices = cumsum(epsilon)
+prices_ts = zoo(prices)
+@
+
+<<fig=TRUE, echo=FALSE>>=
+qplot.zoo(prices_ts)
+@
+ 
+When dealing with arrival times, it is common to use a \emph{Poisson process}, which models time as ...
+
+\subsubsection{Optimization and Dynamic Programming}
+
+Another important feature of many market microstructure models is their dynamics over time.  In particular, not only 
+are many of these models stochastic (changing randomly over time), but they often have an element of dependence. 
+
+
+
+\subsubsubsection{Discrete Time, Discrete State Dynamic Programming}
+
+
+
+
+\subsection{General Equilibrium, Rational Expectations, and the Law of One Price}
+
+Price formation is generally viewed as the equilibrium between supply and demand.  "The equilibrium price is the price at which 
+quantity demanded equals quantity supplied." (O'Hara 14)
+
+\href{http://en.wikipedia.org/wiki/General_equilibrium_theory}{General Equilibrium theory} dates to the 1870s, particularly 
+the work of French economist Léon Walras in his pioneering 1874 work "Elements of Pure Economics".  
+
+Traditional economics is focused on assumptions of \emph{equilibrium}.  Under these assumptions, the trading mechanism 
+is largely irrelevant.  As, for instance, in Hicks (1939) and Radner (1982).
+
+
+\subsection{Market Efficiency}
+
+Market efficiency describes the predictability of asset prices based on information.  
+
+
+\subsection{Digression on Academics, Practicioners, and Performativity}
+
+Sociologists have taken an increased interest in the interaction between financial theory and real world markets over the last 
+few decades in the field of "Social Studies of Finance".  David MacCauley developed the idea of \emph{performativity} in his excellent 
+study "An Engine Not a Camera" (2003).  
+
+An alternative social science viewpoint is being provided from Anthropologists, as for instance, by ...  His recent book "Debt" ...  
+
+The key scholars in this subject are often directly involved in the markets, and hence have incentives ...  
+
+\begin{itemize}
+\item \emph{Andrew Lo} is a professor at MIT and a pivotal figure in the foundations of modern finance. 
+\item \emph{Neil Chriss} was previously the head of quantitative strategies at S.A.C. Capital Partners, and now runs his own firm
+called Hutchin Hill. 
+\item \emph{Robert Almgren} is a professor at NYU and founded Quantitative Brokers in 2009.
+\end{itemize}
+
+\subsection{Outline}
+
+In essence, this paper is 
+
+We start by defining the rules.
+
+Then we consider market makers and liquidity provision, the \emph{sell side}.
+
+The we look at algorithmic trading, market impact, and optimal executions, the \emph{buy side}.
+
+Lastly, we consider high frequency trading, which sits somewhere in between these two parties.
+
+
+\section{Trading and Exchanges}
+
+The exchange mechanism plays an important role in the establishment of prices.
+
+Harris (2003) is the .  DMA (2010) provides a more recent treatment. 
+
+On some level, these previous discussions are outdated as exchanges have been dramatically transformed over
+the last decade by electronic trading.
+
+\subsection{Market Participants}
+
+The literature typically refers to four different types of market participants: ...
+ 
+
+Brokers
+Dealers
+Investors
+
+\subsection{A Brief History}
+
+The story of modern exchanges is primarily an American story.  The innovation and regulations that took place
+in the US in the last 20 years have defined the global standard.
+
+Buttonwood Tree Agreement (Harris, 1598)
+
+Futures exchanges (Bloomberg book)
+
+Auction markets
+ECN's
+
+"Geek's on Wall Street" provides a very entertaining look at market evolution.
+
+
+
+
+\subsection{Auctions and Order Books}
+
+There are two primary structures of modern market exchange: auctions and order books.  Of these, the order book model provides
+the most popular model for continuous trading in liquid assets, and hence is the primary focus for market microstructure 
+analysis.
+
+
+\section{Microstructure Theory}
+
+http://www.acsu.buffalo.edu/~keechung/MGF743/Readings/The%20cost%20of%20transacting.pdf
+http://www.acsu.buffalo.edu/~keechung/MGF743/Readings/
+
+http://www.cambridge.org/resources/0521687276/8763_dejongrindislidesChapter2345.pdf
+Slides: http://www.ems.bbk.ac.uk/faculty/sciubba/microstructure_slides1.pdf
+http://www.ems.bbk.ac.uk/faculty/sciubba/microstructure.html
+www.unc.edu/~garciadi/asyinfo
+
+Surveys: 
+
+http://web.cenet.org.cn/upfile/5056.pdf
+
+Hans R. Stoll: "Market Microstructure", Handbook of The Economics of Finance,
+Volume 1A: Corporate Finance, Chapter 9, pp. 555-600.
+http://www.eco.sdu.edu.cn/jrtzx../uploadfile/pdf/books/handbook/15.pdf
+
+David Easley and Maureen O'Hara: "Microstructure and Asset Pricing", Handbook
+of The Economics of Finance, Volume 1B: Financial Markets and Asset Pricing,
+Chapter 17, pp. 1021-1047.
+
+Jens Vallø Christiansen "Financial Market Microstructure and Trading Algorithms" M.Sc. in Economics and Business Administration, Department of Finance, Copenhagen Business School, 2009
+http://studenttheses.cbs.dk/bitstream/handle/10417/746/jens_valloe_christiansen.pdf
+
+Mauricio Labadie and Charles-Albert Lehalle "Optimal algorithmic trading and market microstructure" October, 2010
+http://hal.archives-ouvertes.fr/docs/00/59/84/28/PDF/memoire_master.pdf
+
+
+Demsetz
+http://people.stern.nyu.edu/lpederse/courses/LAP/papers/Overview/Demsetz68.pdf
+
+"Market microstructure refers to the study of the process and outcomes of exchanging assets under a
+specific set of rules." (O'Hara http://www.bis.org/publ/bppdf/bispap02a.pdf)
+
+Working (1953) and Houthakker (1957)
+
+The first real focus on the interaction between trading mechanisms and price discovery was in Demsetz (1968).  
+
+There are two standard reference frameworks in the literature. The first is called the "continuous
+auction framework" first developed by Kyle (1985). The second is the "sequential trade framework"
+proposed by Glosten and Milgrom (1985). A large amount of research has been done involving the
+application of these two frameworks. Both frameworks are suffciently simple and well behaved that
+they easily lend themselves to analysis of policy issues and empirical testing (see Madhavan (2000) and
+Biais et al. (2005) for extensive surveys of the literature).
+
+
+This follows along with the analysis set forth first by O'Hara (1995).  Hasbrouck (2007) took a different approach,
+focusing on a simple econometric model (the Roll model), then the assymmetric information models, and then the inventory
+models.  Hasbrouck places far more emphasis on econometrics than O'Hara, and as such could be used by an advanced 
+undergraduate more than O'Hara (which is mostly a graduate text).  O'Hara includes very little discussion of one of the 
+most prevalent market structures now: the limit order book (LOB).  
+
+My treatment is shorter, with less emphasis on econometrics.  
+
+The key models are:
+
+\begin{itemize}
+\item \emph{Inventory models} focus on the market maker's risk aversion to having inventory risk.  The simplest model considers the 
+dealer's ruin if he runs out of inventory or cash.
+\item \emph{Sequantial trade models} consider the risk that the counterparty possesses valuable information. 
+\item \emph{Strategic trade models} allows for multiple trades by one informed trader, in order to limit market impact by splitting 
+up orders and hiding his orders.
+\end{itemize}
+
+These latter two models are also considered in light of \emph{adverse selection}, which occurs whenever a passive trader (limit order) is 
+hit by an informed trader (market order).  
+
+I am here following what I would consider to be a logical order, following that set out by O'Hara (1985).  Hasbrouck moved Inventory 
+models to the end, which makes more sense given his econometric focus.   
+
+We will consider each of these in turn, focusing the foundational ideas and then giving a brief review of the current perspectives.
+In each case, there are various simplifying assumptions which make each model unrealistic of actual market exchange.  But these also 
+lead to interesting results that can be applied to real-world problems.  There is also an entire body of literature that considers the empiric
+
+\subsection{Walrasian Auctioneer}
+
+One of the most basic and long-established models for price formation was the \href{http://en.wikipedia.org/wiki/Walrasian_auction}
+{\emph{Walrasian auctioneer}}, following on 
+...
+
+
+"As generations of economists learned, the price formation process ould be captured by the general represetation of a
+Walrasian auctioneers, who aggregates traders' demands and supplies to fina d market-clearing price." (O'Hara, p.4)
+
+http://beyondmicrofoundations.blogspot.com/2011/01/calculating-walrasian-auctioneer.html (with python code)
+
+"Walras also proposed a dynamic process by which general equilibrium might be reached, that of the tâtonnement or groping process.
+The tatonnement process is a model for investigating stability of equilibria. Prices are announced (perhaps by an "auctioneer"), and 
+agents state how much of each good they would like to offer (supply) or purchase (demand). No transactions and no production take place at 
+disequilibrium prices. Instead, prices are lowered for goods with positive prices and excess supply. Prices are raised for goods with excess 
+demand. The question for the mathematician is under what conditions such a process will terminate in equilibrium where demand equates to 
+supply for goods with positive prices and demand does not exceed supply for goods with a price of zero. Walras was not able to provide a 
+definitive answer to this question (see Unresolved Problems in General Equilibrium below)."
+http://en.wikipedia.org/wiki/General_equilibrium_theory
+
+\subsection{Order Processing Costs}
+
+The first basic driver of the bid/ask spread is order processing costs, although this has become increasingly unimportant.
+
+\subsubsection{Roll model (1984)}
+
+\begin{quote}
+This paper presents a method for inferring the effective bid-ask spread directly from a time series of market prices.  The method requires no data 
+other than the prices themselves...
+\end{quote}
+
+%A nice short introduction to this subject can be found in \href{http://www-users.york.ac.uk/~pns2/microstruct109.pdf}{...}.  
+
+\href{http://en.wikipedia.org/wiki/Richard_Roll}{Richard Roll} (\href{http://www.anderson.ucla.edu/x1922.xml}{faculty page}) developed the Roll 
+model in \href{http://www.bauer.uh.edu/rsusmel/phd/roll1984.pdf}{"A simple implicit measure of the e!ective bid-ask spread"} (1984).
+
+Hasbrouck (2007) starts his microstructure overview with a simple econometric model -- the Roll model -- as introduced in Roll (1984).
+The Roll model is based on standard time series modelling, and Hasbrouck subsequently extends this to include multivariate 
+techniques in what he calls the "generalized Roll model".  
+
+We take these into account by adjusting the random walk in the following way:
+
+\begin{equation}
+m_t = m_{t-1} + u_t
+\end{equation}
+
+We make the following assumptions:
+
+\begin{itemize}
+\item All trading in the market is conducted through dealers.  These dealers will post bid/ask prices at each point in time 
+as $a_t$ and $b_t$.  
+\item Dealers are competing with each other so that the spread between the bid/ask prices is equivalent to the dealers' cost
+$c$ per trade.
+\end{itemize}
+
+Then the bid and ask are given by:
+
+\begin{align}
+a_t &= m_t + c \\ 
+b_t &= m_t - c 
+\end{align}
+
+We can infer the trade price $p_t$ as a function of the the mid-quote price $m_t$, half of the bid/ask cost $c$, and the sign of the trade $q_t$
+(+1 for buy and -1 for sell):
+
+\begin{equation}
+p_t = m_t + c q_t
+\end{equation}
+
+
+% http://waxworksmath.com/Authors/G_M/Hasbrouck/Code/Chapter3/RollModel.py
+
+We can model this simply in R.  First let's look at bid/ask prices assuming a constant cost $c$:
+
+<<>>=
+c = 1
+time = 1:100
+epsilon = rnorm(time)
+prices = cumsum(epsilon)
+m_t = zoo(prices)
+a_t = m_t + c
+b_t = m_t - c
+@
+
+We can simulated trade prices by adding a normally distributed trade sign variable:
+
+<<>>=
+q_t = sign(rnorm(time))
+p_t = m_t + (c * q_t)
+@
+
+And plot this, so we can see the trades bouncing back and forth between the bid and ask:
+
+<<roll_model, fig=TRUE, width=8>>=
+x = merge(b_t, a_t, p_t)
+colnames(x) <- c("bid", "ask", "trade")
+print(qplot.zoo(x))
+@
+
+We can also use this model in the opposite direction, to infer transaction costs from actual prices.  
+The roll model has two parameters that can be estimated, $c$ and $\sigma^2$.  This is very useful as it implies that we can estimate
+transaction costs by only using transaction data (i.e. without knowing quoted spreads).  Here, transaction costs are inferred from 
+serial covariance of daily returns.
+
+\begin{equation}
+\Delta p_t = -c q_{t-1} +c q_t + u_t
+\end{equation}
+
+We define the variance and covariance as $\gamma_0 = Var(\Delta p_t)$ and $\gamma_1 = Cov(\Delta p_t, \Delta p_{t-1})$.  Following on Hasbrouck (2007), 
+we have that: 
+
+\begin{align}
+\gamma_0 &= 2 c^2 + \sigma^2_u \\
+\gamma_1 &= -c^2
+\end{align}
+
+So we can now solve for $c$ and $\sigma^2$ as:
+
+\begin{align}
+c &= \sqrt{-\gamma_1} \\
+\sigma^2_u &= \gamma_0 + 2 \gamma_1
+\end{align}
+
+(derivation: http://waxworksmath.com/Authors/G_M/Hasbrouck/WriteUp/weatherwax_hasbrouck_notes.pdf)
+
+So we just need to compute the variance and covariance of returns in order to estimate the expected cost.  An example of estimating these values in R 
+using daily data.
+
+<<>>=
+returns <- function(x) (x/lag(x))-1
+rets <- na.omit(returns(m_t))
+gamma_0 <- var(rets)
+gamma_1 <- cov(rets[1:length(rets)-1], lag(rets, na.pad=FALSE))
+
+sigma_2 <- gamma_0 + 2 * gamma_1
+c_est <- sqrt(2 * gamma_1)
+@
+
+In our simple example, the actual cost was \Sexpr{c} while the estimated cost is \Sexpr{c_est}. 
+
+There are some existing \emph{empirical} studies that attempt to test the Roll model on real data and verify the validity of its estimates.  
+
+As an example, see Hasbrouck (2009) \href{http://people.stern.nyu.edu/jhasbrou/Research/GibbsCurrent/HasbrouckJF.pdf}
+{Trading Costs and Returns for U.S. Equities: Estimating Effective Costs from Daily Data} which uses a generalized version of the Roll model to 
+estimate transaction costs.  Another interesting application is Hasbrouck (2004) "Liquidity in the Futures Pit: Inferring Market Dynamics from Incomplete
+Data".
+
+Interesting: Thomas J. George, Gautam Kaul, M. Nimalendran \href{http://www.ase.ro/upcpr/profesori/167/George-Kaul-Nimalendran.pdf}{"Estimation of the Bid-Ask Spread and its Components: A New Approach"}
+The Review of Financial Studies, Vol. 4, No. 4 (1991), pp. 623-656
+
+There have been many empirical tests of the Roll model, and many subsequent extensions.  I want to highlight Harris (1990) "Statistical Properties of 
+the Roll Serial Covariance Bid/Ask Spread Estimator", which provides a nice summary of the basic flaws.
+
+\begin{quote}
+Unfortunately, the  serial covariance estimator yields poor empirical results 
+when used to estimate individual security spreads from a year of daily or weekly 
+data. Estimated first-order serial covariances are positive for about half of all 
+securities so that the square root in the estimator is not properly defined. Further, 
+estimated spreads depend on the observation interval. In particular, daily estimates are smaller than weekly estimates. Both problems appear in Roll's empirical results.
+\end{quote}
+
+There are some obvious aspects of this model that don't match reality.  
+
+\begin{itemize}
+\item Ordinarily bid and ask prices stay at the same level for different periods of time.  This model doesn't include any sense of 
+size of orders, and hence doesn't capture this temporal aspect.
+\item The bid/ask spread is not a constant in actual trading.  It also follows clear intraday patterns where it varies between the open, midday, and
+close times.
+\item There is a strong relationship between trades and changes in quotes, this dynamic is completely ignored in the Roll model.  A quote level may 
+change when market makers change their prices or someone trades and moves from one level of an order book to another.   
+\item Trades do not occur with every quote.  There can be extended periods of time where markets are being quoted without any trading taking place.
+\end{itemize}
+
+There have been extensions to the basic Roll model, such as \href{http://www.cass.city.ac.uk/__data/assets/pdf_file/0007/128068/H.Zhang.pdf}{Zhang (2012)}
+which we may consider later.
+
+
+\subsection{Inventory models}
+
+% http://www-users.york.ac.uk/~pns2/microstruct209.pdf
+
+If we think of market makers as the intermediaries between buyers and sellers, then they
+
+Inventory models have subsequently largely been replaced by information based models.
+
+Covered in O'Hara Chapter 2 or Hasbrouck Chpater n.   
+
+Models of how market maker inventories affect pricing and liquidity in financial
+markets all predict that a market maker will set his ask price above his bid price for reasons including bankruptcy risk (Garman [6]), market power (Amihud & Mendelson
+6 [1]), and risk aversion (Stoll [19], Ho & Stoll [10, 11]). 
+
+
+\subsubsection{Garman (1976)}
+
+This starts with an important paper by Garman (1976).  Garman's focus was on the temporal aspects of exchange, given that imbalances between
+supply and demand would temporarily arise:
+
+\begin{quote}
+What mattered was that orders would be submitted to the market and imbalances between supply and demand could temporarally arise.
+This imbalance gave an imporance to the "temporal microstructure," or how the exchagne between buyer and seller actually occurred 
+at any point in time.
+\end{quote} 
+
+"In Garman's model, there is a single, monopolistic market maker who sets prices, receives all orders, and clears trades.  The 
+dealers objective is to maximize expected profit per unit of time, subject to the avoidance of bankruptcy or failure.  Failure arises in this model
+whenever the delaer runs out of either inventory of cash.  The market maker's only decision is to set an ask price, $p_a$, at which he will 
+fill orders wishing to buy the stock, and a bid price, $p_b$, at which he will fill orders wishing to sell the stock." (OH 16)
+
+Uncertainty is a result of the different arrival times of buy and sell orders, and thus we can model the uncertainty of the arrival times as 
+a Poisson process.  
+
+Garman innovates on the standard supply/demand function by having the supply/demand price relationship be a function of the arrival rate of orders.
+
+A key component of the Garman model is that the dealer's inventory is directly related to his viability.  
+
+
+\subsubsection{Amihud and Mendelson (1980)}
+
+http://pages.stern.nyu.edu/~lpederse/courses/LAP/papers/InventoryRisk/AmihudMendelson80.pdf
+
+Amihud and Mendelson extend Garman (1976) by considering the relationship between the level of inventory and the price set by the dealer.  
+
+\begin{quote}
+Garman studied the lmplicatlons of some inventory-independent strategies, which are based on the selection of a fixed pair of bid-ask prices, and showed how they lead either to a sure failure or to a possible failure (see also m the next section) He suggested that Ôthe specialists must pursue a policy of relating their prices to their inventories in order to avoid failureÕ [Garman (1976, p 267)] This Inventory-dependent policy is, in fact, the main issue of our paper
+\end{quote} 
+
+AM 1986: (http://pages.stern.nyu.edu/~lpederse/courses/LAP/papers/TransactionCosts/AmihudMendelson86.pdf)
+
+
+http://pages.stern.nyu.edu/~lpederse/courses/LAP/papers/InventoryRisk/GrossmanMiller.pdf
+http://pages.stern.nyu.edu/~lpederse/courses/LAP/papers/InventoryRisk/GrossmanMillerDiscussion.pdf
+
+
+\subsubsection{Stoll (1978)}
+
+Stoll (1978) extends the Garman model to account for the \emph{Market Makers' Ruin Problem}.
+
+
+\subsubsection{Ho and Stoll (1981)}
+
+Stoll (1978) extends the Garman model to account for the \emph{Market Makers' Ruin Problem}.
+
+
+
+
+\subsection{Sequential trade models}
+
+The sequential trade model was first proposed in Glosten and Milgrom (1985).  This involves the study of \emph{assymetric information}, wherein
+there is an interaction between \emph{informed} and \emph{uninformed} traders.  Informed traders are trading on the basis of some information; a
+simple assumption is that these traders know the actual future evolution of the trade prices.  Uninformed traders are trading without any explicit 
+knowledge for future prices, and might be trading on the basis of a simple rebalance (e.g. an index which rebalances due to an inflow/outflow of
+assets).  Each trader is allow to trade once in this model, and a market maker tries to set the bid/ask prices on the basis of the informed 
+trader flow.
+
+Why would a market maker care if orders are placed by informed traders?  The short answer is \emph{adverse selection}.
+
+The simple way to build this model is to consider all the potential scenarios involved in trading.  
+
+
+\subsubsection{Glosten and Milgrom (1985)}
+
+The Glosten and Milgron model is one of the most well known mwas introduced in "" 
+
+https://raw.github.com/alexchinco/Glosten-and-Milgrom--1985-/master/glosten_and_milgrom_1985.py
+https://github.com/alexchinco/Glosten-and-Milgrom--1985-
+http://www.alexchinco.com/?p=3691
+
+
+\subsubsection{Probability of Informed Trading (PIN)}
+
+Easley et al. (1996) build on the model of Glosten and Milgrom (1987) to estimate the
+probability that a counterpart in the trading process enjoys superior "asymmetric" information.
+
+http://scholar.lib.vt.edu/theses/available/etd-05022007-153028/unrestricted/Marius_ETD.pdf
+
+% Set the overall layout of the tree
+\tikzstyle{level 1}=[level distance=3.5cm, sibling distance=3.5cm]
+\tikzstyle{level 2}=[level distance=3.5cm, sibling distance=2cm]
+
+% Define styles for bags and leafs
+\tikzstyle{bag} = [text width=4em, text centered]
+\tikzstyle{end} = [circle, minimum width=3pt,fill, inner sep=0pt]
+
+% The sloped option gives rotated edge labels. Personally
+% I find sloped labels a bit difficult to read. Remove the sloped options
+% to get horizontal labels. 
+\begin{tikzpicture}[grow=right, sloped]
+\node[bag] {V}
+    child {
+        node[bag] {$V = \bar V$}        
+            child {
+                node[end, label=right:
+                    {$P(W_1\cap W_2)=\frac{4}{7}\cdot\frac{4}{9}$}] {}
+                edge from parent
+                node[above] {$W$}
+                node[below]  {$\frac{4}{9}$}
+            }
+            child {
+                node[end, label=right:
+                    {$P(W_1\cap B_2)=\frac{4}{7}\cdot\frac{5}{9}$}] {}
+                edge from parent
+                node[above] {$B$}
+                node[below]  {$\frac{5}{9}$}
+            }
+            edge from parent 
+            node[below]  {$(1 - \delta)$}
+    }
+    child {
+        node[bag] {$V = \bar V2$}        
+        child {
+                node[end, label=right:
+                    {$P(B_1\cap W_2)=\frac{3}{7}\cdot\frac{3}{9}$}] {}
+                edge from parent
+                node[above] {$B$}
+                node[below]  {$\frac{3}{9}$}
+            }
+            child {
+                node[end, label=right:
+                    {$P(B_1\cap B_2)=\frac{3}{7}\cdot\frac{6}{9}$}] {}
+                edge from parent
+                node[above] {$W$}
+                node[below]  {$\frac{6}{9}$}
+            }
+        edge from parent         
+            node[above] {$\delta$}
+    };
+\end{tikzpicture}
+
+
+\subsection{Strategic trade (continuous auction) models}
+
+The \emph{strategic trade} model was first set forth in Kyle (1984, 1985).
+
+
+\subsubsection{Kyle (1985)}
+
+A. S. Kyle. Continuous Auctions and Insider Trading. Econometrica, 53(6):1315-1335, 1985
+
+
+Kyle's model aims to answer how a single informed trader would choose to trade in order to maximize the value of private information.   
+
+D. Easley and M. O'Hara. Price, Trade Size, and Information in Securities Markets. Journal of
+Financial Economics, 19(1), 69-90, 1987.
+http://www.fsa.ulaval.ca/personnel/PHGRE5/files/Easley_OHara_1987.pdf
+
+L. R. Glosten and L. E. Harris. Estimating the Components of the Bid/Ask Spread. Journal of
+Financial Economics, 21(1), 123-142, 1988.
+
+% http://pages.stern.nyu.edu/~jhasbrou/Teaching/2011%20Fall%20PhD%20Microstructure/classNotes/StrategicTrade.pdf
+%http://pages.stern.nyu.edu/~jhasbrou/Teaching/2010%20PhD%20Microstructure/phd_seminar_in_market_microstruc.html
+
+%http://people.stern.nyu.edu/jhasbrou/SternMicroMtg2012/Accepted/Kelley%20Tetlock%20-%20How%20Uninformed%20Is%20Trading.pdf
+
+\section{Limit Order Book}
+
+
+
+\subsection{Limit Orders as Option Prices}
+
+\subsubsection{Copeland and Galai (1983)}
+
+Copeland and Galai (1983) provided the foundational study on how market making is equivalent to option writing.
+
+\begin{quote}
+An individual who chooses to serve as a market-maker is assumed to optimize his
+position by setting a bid-ask spread which maximizes the difference between expected
+revenues received from liquidity-motivated traders and expected losses to information motivated 
+traders.  By characterizing the cost of supplying quotes, as writing a put and
+a call option to an information-motivated trader, it is shown that the bid-ask spread is
+a positive function of the price level and return variance, a negative function of measures
+of market activity, depth, and continuity, and negatively correlated with the degree of
+competition. Thus, the theory of information effects on the bid-ask spread proposed in
+this paper is consistent with the empirical literature.
+\end{quote}
+
+
+\subsubsection{Brenner and Subrahmanyam (1988)}
+
+
+\subsubsection{Jarnecic and McInish (1997)}
+
+"An Empirical Investigation of the Option Value of the Limit Order Book on the Australian Stock Exchange"
+
+\subsubsection{Harris (2003)}
+
+
+
+
+\subsubsection{Chacko, Jurek, and Stafford (2008)}
+
+In "The Price of Immediacy", Chacko, Jurek, and Stafford 
+
+\begin{quote}
+This paper models transaction costs as the rents that a monopolistic market maker
+extracts from impatient investors who trade via limit orders.  We show that limit orders
+are American options. The limit prices inducing immediate execution of the order are
+functionally equivalent to bid and ask prices and can be solved for various transaction
+sizes to characterize the market maker's entire supply curve. We find considerable
+empirical support for the model's predictions in the cross-section of NYSE firms. The
+model produces unbiased, out-of-sample forecasts of abnormal returns for firms added
+to the S&P 500 index.
+\end{quote}
+
+\subsection{Spread and Depth: Lee, Mucklow, and Ready (1993)}
+
+Lee, Mucklow, and Ready (1993) \cite{Lee1993} showed that "wide spreads are accompanied by low depths, and that spreads widen and depths fall in response to higher volume." 
+
+
+\subsection{Adverse Selection}
+
+\subsubsection{Glosten and Harris (1988)}
+
+"This paper develops and implements a technique for estimating a model of the bid/ask spread.
+The spread is decomposed into two components, one due to asymmetric information and one due
+to inventory costs, specialist monopoly power, and clearing costs. The model is estimated using
+NYSE common stock transaction prices in the period 1981-1983. Cross-sectionaI regrzsion
+analysis is then used to relate time-series estimated spread components to other stock _%xzacteris=
+tics. The results cannot reject the hypothesis that significant amounts of NYSE common stock
+spreads are due to asymmetric information."
+
+\section{Algorithmic Trading and Transaction Cost Analysis}
+
+The primary theoretical papers on the subject are Lo and Habermas (1997) and Almgren and Chriss (1998).  The Almgren/Chriss model
+
+"Optimal Trading Algorithms: Portfolio Transactions, Multiperiod Portfolio Selection, and Competitive Online Search"
+http://e-collection.library.ethz.ch/eserv/eth:30852/eth-30852-02.pdf
+
+Algorithmic trading covers the electronic execution of trades, typically aimed at transaction cost reduction.
+
+Transaction cost reduction.
+
+Transaction Cost Analysis (TCA) is one of the most widely adopted applications of microstructure theory.  
+
+\begin{enumerate}
+\item Direct costs such as commissions, custody fees, taxes, and
+infra-structure costs
+\begin{itemize}
+\item primarily determined by quantity of trading
+\item easy to measure
+\end{itemize}
+\item Indirect costs such as market impact and opportunity costs
+\begin{itemize}
+\item primarily determined by the trading strategy at micro-level
+\item hard to measure
+\end{itemize}
+\end{enumerate}
+
+DAVID J. LEINWEBER "Using Information From Trading: In Trading And Portfolio Management: Ten Years Later"
+http://www.hss.caltech.edu/SSPapers/wp1135.pdf
+
+\subsection{Transaction Costs}
+
+\subsubsection{Implementation Shortfall: Treynor (1981) and Perold (1988)}
+
+
+Jack L. Treynor "What Does It Take to Win the Trading Game?" Financial Analysts Journal, Vol. 37, No. 1 (Jan. - Feb., 1981), pp. 55-60, http://www.jstor.org/stable/4478421 
+
+André F. Perold "The implementation shortfall: Paper versus reality" The Journal of Portfolio Management, Spring 1988, Vol. 14, No. 3: pp. 4-9, http://dx.doi.org/10.3905/jpm.1988.409150
+
+Hitesh Mittal: "Implementation Shortfall - One Objective, Many Algorithms"
+http://www.cis.upenn.edu/~mkearns/finread/impshort.pdf
+
+The most basic model for transaction costs is the \emph{Implementation Shortfall} (Teynor 1981, Perold 1988):
+
+\begin{equation}
+implementation shortfall = trade price - (decision price + commissions)
+\end{equation}
+
+From Kolm:
+
+Desirable aspects for a t-cost model:
+
+Unbiasedness: 
+Low error: 
+High explanatory power:
+
+
+\subsubsection{The Square-Root Formula}
+
+http://www.math.nyu.edu/financial_mathematics/content/02_financial/2008-6.pdf
+
+Discussed in Chapter 16 of:
+Grinold, Richard C., and Ronald N. Kahn, 1995, Active Portfolio Management (New York: The McGraw-Hill Companies, Inc.)
+
+\begin{equation}
+Cost = Spread term + c \sigma \sqrt{\frac{n}{V}} 
+\end{equation}
+
+
+\subsubsection{Market Impact}	
+
+Transaction costs are generally broken into explicit and implicit.  Explicit includes anything that is visible, such as
+commissions and taxes.  Implicit covers the difference between the desired and realized execution prices, and covers 
+the bid/ask spread and market impact.
+
+Logically, we know that the more we trade, the larger the market impact.  And that the type of asset matters, so trying to trade in
+an illiquid asset should cost more.  Lastly, time should be a factor: trying to execute quickly should cost more.  We can think 
+of this in terms of the time variation of supply/demand.
+
+In the implementation-shortfall framwork of Perold (JPM, 1988), MI is defined as the difference between pre-trade or paper price 
+and the realized execution price.  
+
+MI can be decomposed into temporary and permanent impact components.
+
+http://www.dbquant.com/Presentations/Berlin200812.pdf
+http://www.cmap.polytechnique.fr/financialrisks/conference2011/talks/aurelien_alfonsi.pdf
+http://www.cmap.polytechnique.fr/~euroschoolmathfi09/ParisSummerschool0908_Schied.pdf
+http://www.northinfo.com/documents/257.pdf
+http://www.haas.berkeley.edu/groups/finance/hiddenImpact13.pdf
+
+Recent: 
+http://arxiv.org/abs/1205.4008
+
+
+
+\subsubsubsection{Stoll (1989): Temporary and Permanent}	
+
+http://www.acsu.buffalo.edu/~keechung/MGF743/Readings/Stoll%201989.pdf
+
+
+\subsubsubsection{Almgren, Thum, Hauptmann, and Li (2005)}	
+
+Almgren, Robert, Chee Thum, Emmanuel Hauptmann, and Hong Li, 2005,
+Equity market impact, Risk July, 57{6
+http://www.math.nyu.edu/~almgren/papers/costestim.pdf
+
+
+
+\subsection{Optimal Execution (Trade Scheduling)}
+
+Almgren, R. (2001): "Optimal Execution of Portfolio Transactions", Journal of Risk, 3, 5-39.
+Almgren, R. (2003): "Optimal Execution with Nonlinear Impact Functions and Trading-enhanced risk," Applied Mathematical Finance, 10, 1-18
+
+http://www.courant.nyu.edu/~almgren/papers/arrival1.pdf
+
+Bertsimas, Andrew Lo "Optimal control of execution costs", Journal of Financial Markets, 1, 1-50, 1998. http://web.mit.edu/dbertsim/www/papers/Finance/Optimal%20control%20of%20execution%20costs.pdf
+(with Paul Hummel and Andrew Lo) "Optimal control of execution costs for portfolios", Computing in Science and Engineering, 40-53, 1999. http://www.mit.edu/~dbertsim/papers/Finance/Optimal%20control%20of%20execution%20costs%20for%20portfolios.pdf
+
+http://hal.archives-ouvertes.fr/docs/00/59/84/28/PDF/memoire_master.pdf
+
+Huberman and Stanzl "Optimal Liquidity Trading", (2005)
+
+\subsubsection{Bertsimas and Lo (1998)}
+
+Dimitris Bertsimas and Andrew Lo (BL) wrote "Optimal Control of Execution Costs" in 1998 and provided the first exposition of trade 
+scheduling based on a t-cost minimization.  "We derive dynamic optimal trading strategies that minimize the expected cost
+of trading a large block of equity over a fixed time horizon." (BL 1)  
+
+
+\subsubsection{Almgren and Chriss (2000)}
+
+
+[From Walia, p.15]
+
+In Almgren and Chriss (2000), the underlying stock movement is modelled as arithmetic Brownian motion in discrete time.
+
+\begin{equation}
+S_k = S_{k+1} + \sigma \tau^{1/2} \gamma_k - \tau g(n_k/\tau)
+\end{equation}
+
+Following from Stoll (1989), Almgren and Chriss also include a temporary 
+
+\begin{equation}
+S_k = S_{k+1} - h(n_k/\tau)
+\end{equation}
+
+
+\subsubsection{Dynamic Trading Schedules: Extensions to Almgren/Chriss}
+
+Obizhaeva, Anna, and Jiang Wang, 2005, Optimal trading strategy and supply/demand dynamics, Discussion paper MIT Sloan School of Management.
+Alfonsi, Aurelien, Alexander Schied, and Antje Schulz, 2007, Optimal execution strategies in limit order books with general shape functions, Discussion paper CERMICS, projet MATHFI
+
+Malamut, R. (2002), "Multi-Period Optimization Techniques for Trade Scheduling," QWAFAFEW, April 2002
+
+\subsection{Optimal Execution (Order Type)}
+
+A separate branch of literature is concerned with the type of order that is used, and where it should be placed within the
+limit order book.
+
+
+
+\subsection{Algorithmic Trading}
+
+
+http://iafe.org/html/documents/KolmIAFEMay272009.pdf
+http://www.cims.nyu.edu/~kolm/KolmMaclin%20AlgoTrading.pdf
+http://faculty.haas.berkeley.edu/hender/ATInformation.pdf
+
+\section{High Frequency Quoting and Trading}
+
+With the arrival of electronic markets, market makers were primarily replaced by high frequency traders.
+
+Scalping and market making.
+
+There are several books on high frequency trading, including 
+
+http://dspace.mit.edu/bitstream/handle/1721.1/59122/658860705.pdf
+http://papers.ssrn.com/sol3/papers.cfm?abstract_id=568363
+http://www.iaeng.org/publication/WCE2010/WCE2010_pp352-357.pdf
+http://www.londonstockexchange.com/about-the-exchange/regulatory/responsetocesrscallforevidenceonmicro-structuralissuesoftheeuropeanequitymarkets.pdf
+
+http://papers.ssrn.com/sol3/papers.cfm?abstract_id=1722924&rec=1&srcabs=1695596
+
+http://www.tinbergen.nl/discussionpapers/11076.pdf
+
+
+\subsection{NBBO}
+
+http://people.stern.nyu.edu/jhasbrou/Research/Working%20Papers/CompNBBO02.pdf
+
+
+\subsection{Flow Toxicity and VPIN}
+
+Optimal Execution Horizon (OEH): http://economics.cornell.edu/deasley/Optimal%20Execution%20Horizon.pdf
+Flow toxicity: 
+
+
+http://papers.ssrn.com/sol3/papers.cfm?abstract_id=1695596&rec=1&srcabs=568363
+
+\section{Conclusion}
+
+Our understanding of how markets behave at the individual trade and quote level is still developing, although it has evolved dramatically 
+over the last 30 years.
+
+
+\section{Further Reading}
+
+I provide references throughout the text to the canonical papers and books relevant to each topic.  As a general topic, I recommend 
+the following as more detailed texts on the subject:
+
+\begin{itemize}
+\item Joel Hasbrouck "Empirical Market Microstructure".  An early draft of the book can be found online at 
+\href{http://www.acsu.buffalo.edu/~keechung/MGF743/Readings/Hasbrouck's%20book.pdf}{...} 
+\end{itemize}
+
+
+%----------------------------------------------------------------------------------------
+%	BIBLIOGRAPHY
+%----------------------------------------------------------------------------------------
+
+\begin{thebibliography}{99} % Bibliography - this is intentionally simple in this template
+
+\bibitem[Figueredo and Wolf, 2009]{Figueredo:2009dg}
+Figueredo, A.~J. and Wolf, P. S.~A. (2009).
+\newblock Assortative pairing and life history strategy - a cross-cultural
+  study.
+\newblock {\em Human Nature}, 20:317--330.
+
+\bibitem[Kyle, 1985]{Kyle:1985}
+Kyle, A.S. (1985).
+\newblock Continuous auctions and insider trading.
+\newblock {\em Econometrica}, 53: 1315-1336 .
+
+Roll, R., 1984. A simple implicit measure of the e!ective bid-ask spread. Journal of Finance 39, 1127-1139.
+
+O'Hara, M. (1995). Market Microstructure Theory. Cambridge, MA: Blackwell 1995
+ 
+\end{thebibliography}
+
+\end{document}
+
+
+%
+%
+% Agent based simulation in python: http://meandering-through-mathematics.blogspot.com/2011/08/supply-demand-and-market-microstructure.html
