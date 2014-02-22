@@ -1,0 +1,9 @@
+Package: mm
+Type: Package
+Title: Market microstructure models
+Version: 0.1
+Date: 2014-02-22
+Author: Shane Conway
+Maintainer: Shane Conway <smc77@columbia.edu>
+Description: Basic market microstructure models, including examples of inventory and adverse selection models.
+License: GPL
