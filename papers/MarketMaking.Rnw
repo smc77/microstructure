@@ -1,0 +1,290 @@
+\documentclass[12pt]{article} % Default font size is 12pt, it can be changed here
+\documentclass[12pt]{book} % Default font size is 12pt, it can be changed here
+%\documentclass{tufte-handout}
+
+\usepackage{geometry} % Required to change the page size to A4
+\geometry{a4paper} % Set the page size to be A4 as opposed to the default US Letter
+
+%\usepackage{float} % Allows putting an [H] in \begin{figure} to specify the exact location of the figure
+\usepackage{wrapfig} % Allows in-line images such as the example fish picture
+\usepackage{amsmath} 
+\usepackage[utf8]{inputenc} 
+%\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+
+%\linespread{1.2} % Line spacing
+
+%\setlength\parindent{0pt} % Uncomment to remove all indentation from paragraphs
+
+%\graphicspath{{./Pictures/}} % Specifies the directory where pictures are stored
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{../../Sweave}
+\usepackage{subfigure}
+%\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{caption}
+%\usepackage{float} 
+\usepackage{attrib} 
+
+\usepackage{tikz}
+\usepackage{graphicx}
+\usetikzlibrary{shapes,backgrounds}
+\usetikzlibrary{arrows,positioning}
+\usetikzlibrary{trees}
+%\usepackage{signalflowdiagram}
+\usepackage{schemabloc}
+
+\usetikzlibrary{circuits}
+
+\SweaveOpts{engine=R,eps=FALSE,echo=TRUE,prefix.string=figures/chart}
+
+\title{High-Frequency Market Making in a Limit Order Book: The effect of
+inventory and adverse selection on order book dynamics}
+
+\author{Shane Conway\\
+\small \texttt{smc77@columbia.edu}\\
+}
+
+\date{\dateline{June 10, 2012}}\\
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\end{abstract}
+
+\newpage
+
+%\begin{titlepage}
+%
+%\newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % Defines a new command for the horizontal lines, change thickness here
+%
+%\center % Center everything on the page
+%
+%\textsc{\LARGE University Name}\\[1.5cm] % Name of your university/college
+%\textsc{\Large Major Heading}\\[0.5cm] % Major heading such as course name
+%\textsc{\large Minor Heading}\\[0.5cm] % Minor heading such as course title
+%
+%\HRule \\[0.4cm]
+%{ \huge \bfseries Title}\\[0.4cm] % Title of your document
+%\HRule \\[1.5cm]
+%
+%\begin{minipage}{0.4\textwidth}
+%\begin{flushleft} \large
+%\emph{Author:}\\
+%John \textsc{Smith} % Your name
+%\end{flushleft}
+%\end{minipage}
+%~
+%\begin{minipage}{0.4\textwidth}
+%\begin{flushright} \large
+%\emph{Supervisor:} \\
+%Dr. James \textsc{Smith} % Supervisor's Name
+%\end{flushright}
+%\end{minipage}\\[4cm]
+%
+%{\large \today}\\[3cm] % Date, change the \today to a set date if you want to be precise
+%
+%%\includegraphics{Logo}\\[1cm] % Include a department/university logo - this will require the graphicx package
+%
+%\vfill % Fill the rest of the page with whitespace
+%
+%\end{titlepage}
+
+<<echo=FALSE>>=
+#install.packages(c("RColorBrewer", "xtable", "xts",
+#                "RQuantLib", "quantmod", "PerformanceAnalytics", 
+#                "ggplot2", "car", "RJSONIO", "plyr", "reshape"))
+
+library(RColorBrewer)
+library(xtable)
+library(xts)
+library(RQuantLib)
+library(quantmod)
+library(PerformanceAnalytics)
+library(ggplot2)
+library(car)
+library(RJSONIO)
+library(plyr)
+library(reshape)
+
+#rm(list=ls())
+options("width"=75)  # to override Dirk's R default and so that Sweave behaves
+#options("prompt"="R> ") # cue Kleiber and Zeileis; also JSS default
+# create figures/ if not present
+if ( ! (file.exists("figures") && file.info("figures")$isdir) ) dir.create("figures")
+
+qplot.zoo <- function(x) {
+	edhec <- melt(data.frame(date=index(x), x), id="date")
+	return(qplot(date, value, data = edhec, geom = "line", group = variable, color=variable))	
+}
+@
+
+\tableofcontents
+
+\newpage
+
+\section{Introduction}
+
+The \emph{Limit Order Book} (LOB) lies at the heart of modern market
+microstructure.  This exchange mechanism provides the means for any market
+participant to act as either a liquidity \emph{provider} or \emph{taker}.  
+
+It is conventional in market making models to consider agents who can post limit
+orders or market orders, where a market order is simply one which crosses the
+bid/ask spread in order to take liquidity.  We will stick with this convention,
+while noting that actual market orders are simply an order type with a specific
+set of rules: to fill an order regardless of the resulting price.  While a limit
+order specifies a price.
+
+The bid/ask spread is primarily modelled as a function of three terms:
+\emph{order processing costs}, \emph{inventory risk}, and \emph{adverse
+selection}.
+
+
+
+
+\section{Background}
+
+Starting with Garman (1976), there is a long history of market microstructure
+theory.
+
+Garman innovates on the standard supply/demand function by having the
+supply/demand price relationship be a function of the arrival rate of orders.  
+
+\subsection{Ho and Stoll (1981)}
+
+Ho and Stoll (1981 \cite{Ho1981}) "Optimal dealer pricing under transactions and
+return uncertainty"
+
+
+\subsection{Avellaneda and Stoikov (2008)}
+
+Avellaneda and Stoikov use an arithmetic brownian motion mid-point price process $S_t$
+
+\begin{equation}
+S_t = s + \sigma W_t
+\end{equation}
+
+<<random_walk, fig=TRUE, width=8, height=4, echo=FALSE, include=FALSE>>=
+	s <- 5.43 + cumsum(rnorm(1000))
+    df <- data.frame(t=1:1000, s=s)
+    print(ggplot(df, aes(x=t, y=s)) + geom_line())
+@
+
+\begin{figure}[h!]
+  \centering
+    \includegraphics[width=0.95\textwidth]{figures/chart-random_walk}
+  \caption{Brownian motion $S_t$ mid-point process.}
+\end{figure}
+
+The market maker seeks to maximize the expected utility through the value
+function:
+
+\begin{equation}
+v(x, s, q, t) = E_t[-e^{(-\gamma (x + q S_T))}]
+\end{equation}
+
+
+
+\subsection{Gueant, Lehalle, and Fernandez-Tapia (2012)}
+
+The position at time $t$ is represented by $q_t$ is a function of the number of
+fills at the bid $N_t^b$ and ask $N_t^a$ respectively:
+
+\begin{equation}
+q_t = N_t^b - N_t^a
+\end{equation}
+
+
+
+\subsection{Guilbaud and Pham (2013a)}
+
+
+
+\subsection{Guilbaud and Pham (2013b)}
+
+
+
+\subsection{Overview}
+
+We follow in the tradition of Avellaneda/Stoikov (2006), but extend the model in
+some fundamental ways.
+
+\begin{itemize}
+  \item We add a term for \emph{adverse selection}.
+\end{itemize}
+
+
+\section{The Model}
+
+
+
+
+\subsection{The mid-price of the stock}
+
+\begin{equation}
+S_t = s + \sigma W_t
+\end{equation}
+
+
+\section{Further Reading}
+
+I provide references throughout the text to the canonical papers and books relevant to each topic.  As a general topic, I recommend 
+the following as more detailed texts on the subject:
+
+\begin{itemize}
+\item Joel Hasbrouck "Empirical Market Microstructure".  An early draft of the book can be found online at 
+\href{http://www.acsu.buffalo.edu/~keechung/MGF743/Readings/Hasbrouck's%20book.pdf}{...} 
+
+\end{itemize}
+
+
+%----------------------------------------------------------------------------------------
+%	BIBLIOGRAPHY
+%----------------------------------------------------------------------------------------
+
+\begin{thebibliography}{99} % Bibliography - this is intentionally simple in this template
+
+
+@article{Ho1981,
+author = {Ho, Thomas and Stoll, Hans R.},
+doi = {10.1016/0304-405X(81)90020-9},
+file = {:Users/smc77/papers/1-s2.0-0304405X81900209-main.pdf:pdf},
+issn = {0304405X},
+journal = {Journal of Financial Economics},
+mendeley-groups = {Market Microstructure,Market Making},
+month = mar,
+number = {1},
+pages = {47--73},
+title = {{Optimal dealer pricing under transactions and return uncertainty}},
+url = {http://linkinghub.elsevier.com/retrieve/pii/0304405X81900209},
+volume = {9},
+year = {1981}
+}
+
+\bibitem[Kyle, 1985]{Kyle:1985}
+Kyle, A.S. (1985).
+\newblock Continuous auctions and insider trading.
+\newblock {\em Econometrica}, 53: 1315-1336 .
+
+Roll, R., 1984. A simple implicit measure of the e!ective bid-ask spread. Journal of Finance 39, 1127-1139.
+
+O'Hara, M. (1995). Market Microstructure Theory. Cambridge, MA: Blackwell 1995
+ 
+ [1] B. Biais, L. Glosten and C. Spatt, TheMicrostructure of StockMarkets,Working paper (2004).
+[2] J.-P. Bouchaud, M.Mezard andM. Potters, Statistical Properties of Stock Order Books: Empirical Results and Models, Quantitative Finance, 2 (2002) 251-256.
+[3] X. Gabaix, P. Gopikrishnan, V. Plerou, H.E. Stanley, A Theory of Large Fluctu- ations in Stock Market Activity, MIT Department of Economics Working Paper No. 03-30.
+[4] P. Gopikrishnan, V. Plerou, X. Gabaix and H.E. Stanley, Statistical Properties of Share Volume Traded in Financial Markets, Physical Review E, 62 (2000) R4493-R4496.
+[5] T. Ho and R. Macris, Dealer Bid-Ask Quotes and Transaction Prices: An Em- pirical Study of Some AMEX Options, Journal of Finance, 39, (1984) 23-45.
+[6] T. Ho and H. Stoll, Optimal Dealer Pricing under Transactions and Return Uncertainty, Journal of Financial Economics, 9 (1981) 47-73.
+ 
+\end{thebibliography}
+
+\end{document}
+
+
+%
+%
+% Agent based simulation in python: http://meandering-through-mathematics.blogspot.com/2011/08/supply-demand-and-market-microstructure.html

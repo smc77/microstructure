@@ -1,4 +1,5 @@
 \documentclass[12pt]{article} % Default font size is 12pt, it can be changed here
+\documentclass[12pt]{book} % Default font size is 12pt, it can be changed here
 %\documentclass{tufte-handout}
 
 \usepackage{geometry} % Required to change the page size to A4
@@ -7,7 +8,7 @@
 %\usepackage{float} % Allows putting an [H] in \begin{figure} to specify the exact location of the figure
 \usepackage{wrapfig} % Allows in-line images such as the example fish picture
 \usepackage{amsmath} 
-
+\usepackage[utf8]{inputenc} 
 %\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
 
 %\linespread{1.2} % Line spacing
@@ -18,7 +19,7 @@
 
 \usepackage{hyperref}
 \usepackage{url}
-\usepackage{Sweave}
+\usepackage{../../Sweave}
 \usepackage{subfigure}
 %\usepackage[utf8]{inputenc}
 \usepackage{booktabs}
@@ -38,13 +39,15 @@
 
 \SweaveOpts{engine=R,eps=FALSE,echo=TRUE,prefix.string=figures/chart}
 
-\title{The Law of One Price Meets the Law of Many Prices: Market Microstructure, Transaction Costs, and Algorithmic Trading}
+%\title{The Law of One Price Meets the Law of Many Prices: Market Microstructure,
+%Transaction Costs, and Algorithmic Trading}
+\title{The Price of Immediacy}
 
 \author{Shane Conway\\
 \small \texttt{smc77@columbia.edu}\\
 }
 
-\date{\dateline{June 10, 2012}\\
+\date{\dateline{June 10, 2012}}\\
 
 \begin{document}
 \maketitle
@@ -96,6 +99,10 @@ trading and quoting.
 %\end{titlepage}
 
 <<echo=FALSE>>=
+#install.packages(c("RColorBrewer", "xtable", "xts",
+#                "RQuantLib", "quantmod", "PerformanceAnalytics", 
+#                "ggplot2", "car", "RJSONIO", "plyr", "reshape"))
+
 library(RColorBrewer)
 library(xtable)
 library(xts)
@@ -209,59 +216,6 @@ http://journal.r-project.org/archive/2011-1/RJournal_2011-1_Kane~et~al.pdf
 % http://pages.stern.nyu.edu/~jhasbrou/Teaching/2011%20Fall%20PhD%20Microstructure/PhDMicro2011Fall.html
 % http://waxworksmath.com/Authors/G_M/Hasbrouck/WriteUp/weatherwax_hasbrouck_notes.pdf
 
-\subsection{Value, Price, Quantity, Uncertainty, and Time}
-
-The time value of money is the central idea of finance.  This might simply be thought of in terms of interest rates.  In this sense, the
-bid-ask spread is the instantaneous interest rate that the market maker charges for temporal risk.
-
-In an abstract sense we are most concerned with the \emph{value} of an asset, although the simplest proxy for value is \emph{price} and
-I will consider concepts to be interchangable.  Price is generally easier to process.
-
-The interaction between the price and time lies at the heart of market microstructure and transaction costs.  In one of 
-the foundational works, Demsetz (1968)...  "Demsetz argued that this lack of equilibrium could be overcome by paying a 
-price for immediacy." (O'Hara 5) 
-
-Another important aspect of exchange is quantity: namely, at different prices, individuals would be will to exchange varying amounts 
-of things.
-
-\subsubsection{Stochastic Processes}
-
-The random walk (or brownian motion) is the most basic model for price dynamics, first proposed by Bachelier (1895).  This is generally one of the first things
-being considered in \emph{stochastic processes}.  
-
-The basic basic model can be defined as a sequential addition of the prior value plus a random variable $\epsilon$ (typically gaussian).  
-
-\begin{equation}
-p_t = p_{t - 1} + \epsilon
-\end{equation}
-
-It is simple to test these models in R with the following command:
-
-<<>>=
-time = 1:100
-epsilon = rnorm(time)
-prices = cumsum(epsilon)
-prices_ts = zoo(prices)
-@
-
-<<fig=TRUE, echo=FALSE>>=
-qplot.zoo(prices_ts)
-@
- 
-When dealing with arrival times, it is common to use a \emph{Poisson process}, which models time as ...
-
-\subsubsection{Optimization and Dynamic Programming}
-
-Another important feature of many market microstructure models is their dynamics over time.  In particular, not only 
-are many of these models stochastic (changing randomly over time), but they often have an element of dependence. 
-
-
-
-\subsubsubsection{Discrete Time, Discrete State Dynamic Programming}
-
-
-
-
 \subsection{General Equilibrium, Rational Expectations, and the Law of One Price}
 
 Price formation is generally viewed as the equilibrium between supply and demand.  "The equilibrium price is the price at which 
@@ -307,6 +261,99 @@ Then we consider market makers and liquidity provision, the \emph{sell side}.
 The we look at algorithmic trading, market impact, and optimal executions, the \emph{buy side}.
 
 Lastly, we consider high frequency trading, which sits somewhere in between these two parties.
+
+
+
+\section{Data Analysis}
+
+In this section, I aim to provide a short summary of all the basic tools
+required for analysis of financial market data, especially given some of the
+complexities inherent in high-frequency market data.
+
+
+\subsection{Value, Price, Quantity, Uncertainty, and Time}
+
+The time value of money is the central idea of finance.  This might simply be thought of in terms of interest rates.  In this sense, the
+bid-ask spread is the instantaneous interest rate that the market maker charges for temporal risk.
+
+In an abstract sense we are most concerned with the \emph{value} of an asset, although the simplest proxy for value is \emph{price} and
+I will consider concepts to be interchangable.  Price is generally easier to process.
+
+The interaction between the price and time lies at the heart of market microstructure and transaction costs.  In one of 
+the foundational works, Demsetz (1968)...  "Demsetz argued that this lack of equilibrium could be overcome by paying a 
+price for immediacy." (O'Hara 5) 
+
+Another important aspect of exchange is quantity: namely, at different prices, individuals would be will to exchange varying amounts 
+of things.
+
+\subsubsection{Stochastic Processes}
+
+The random walk (or brownian motion) is the most basic model for price dynamics, first proposed by Bachelier (1895).  This is generally one of the first things
+being considered in \emph{stochastic processes}.  
+
+The basic basic model can be defined as a sequential addition of the prior value plus a random variable $\epsilon$ (typically gaussian).  
+
+\begin{equation}
+p_t = p_{t - 1} + \epsilon
+\end{equation}
+
+It is simple to test these models in R with the following command:
+
+<<>>=
+time = 1:100
+epsilon = rnorm(time)
+prices = cumsum(epsilon)
+prices_ts = zoo(prices)
+@
+
+<<fig=TRUE, echo=FALSE>>=
+qplot.zoo(prices_ts)
+@
+ 
+When dealing with arrival times, it is common to use a \emph{Poisson process}, which models time as ...
+
+
+
+\subsection{Convex Optimization}
+
+Another important feature of many market microstructure models is their dynamics over time.  In particular, not only 
+are many of these models stochastic (changing randomly over time), but they often have an element of dependence. 
+
+In general, when trying to solve a mathematical problem in finance, we can
+either find explicit solutions or optimal solutions.  Explicit solutions require
+us to solve the given problem directly, which is not possible under certain
+common conditions. 
+% TODO: When can you solve directly vs. not?
+
+In optimization problems, we aim to \emph{learn the underlying relationship by
+fitting a model to the data}.
+
+I like to think about optimization problems in terms of their domain space. 
+Consider the following simple model:
+
+\begin{equation}
+Score_{SAT} = \beta_0 + \beta_1 Income + \epsilon
+\end{equation}
+
+This states that there is a relationship between SAT scores and income.  
+
+\subsection{Dynamic Programming}
+
+Finance is a social science, and thus bares more similarity to fields such as
+economics, political science, sociology, and psychology than to physical
+sciences like Physics and Biology.  One way to think about this is that the data
+that we study, primarily prices, are \emph{social} variables: people not only
+set prices based on a large, complex set of reasons, but they also are
+inherently \emph{dependent}, that is to say that futures prices always depend on
+prior prices.  We look at what happens and consciously react.
+
+Having dependent time series variables poses a serious challenge to many basic
+statistical tools.  
+
+
+\subsubsection{Discrete Time, Discrete State Dynamic Programming}
+
+
 
 
 \section{Trading and Exchanges}
@@ -642,6 +689,7 @@ Garman innovates on the standard supply/demand function by having the supply/dem
 
 A key component of the Garman model is that the dealer's inventory is directly related to his viability.  
 
+Garman 
 
 \subsubsection{Amihud and Mendelson (1980)}
 
@@ -654,6 +702,7 @@ Garman studied the lmplicatlons of some inventory-independent strategies, which 
 \end{quote} 
 
 AM 1986: (http://pages.stern.nyu.edu/~lpederse/courses/LAP/papers/TransactionCosts/AmihudMendelson86.pdf)
+
 
 
 http://pages.stern.nyu.edu/~lpederse/courses/LAP/papers/InventoryRisk/GrossmanMiller.pdf
@@ -941,6 +990,17 @@ Recent:
 http://arxiv.org/abs/1205.4008
 
 
+Anomalous price impact and the critical nature of
+liquidity in nancial markets
+B. Toth a
+, Y. Lemperiere a
+, C. Deremble a
+, J. de Lataillade a
+,
+J. Kockelkoren a
+, J.-P. Bouchaud a
+http://arxiv.org/pdf/1105.1694.pdf
+
 
 \subsubsubsection{Stoll (1989): Temporary and Permanent}	
 
@@ -1060,6 +1120,7 @@ the following as more detailed texts on the subject:
 \begin{itemize}
 \item Joel Hasbrouck "Empirical Market Microstructure".  An early draft of the book can be found online at 
 \href{http://www.acsu.buffalo.edu/~keechung/MGF743/Readings/Hasbrouck's%20book.pdf}{...} 
+
 \end{itemize}
 
 
