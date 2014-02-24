@@ -153,10 +153,20 @@ theory.
 Garman innovates on the standard supply/demand function by having the
 supply/demand price relationship be a function of the arrival rate of orders.  
 
+\subsection{Stoll (1978)}
+
+Stoll (1978) "The Supply of Dealer Services in Securities Markets" introduced an
+important set of innovations over the Garman (1976) model for dealer prices.
+
 \subsection{Ho and Stoll (1981)}
 
 Ho and Stoll (1981 \cite{Ho1981}) "Optimal dealer pricing under transactions and
-return uncertainty"
+return uncertainty" expands on the model from Ho (1978) by considering a
+multistage problem.  They seek to define the behavior of a single dealer in a
+security who seeks to maximize his expected utility (terminal wealth) while
+considering his inventory risk.
+
+
 
 
 \subsection{Avellaneda and Stoikov (2008)}
